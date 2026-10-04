@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Platform Setoran Gmail</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 800px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .hidden { display: none !important; }
+        h2, h3 { color: #1a73e8; margin-top: 0; }
+        
+        /* Input & Button Styles */
+        input, select, textarea, button { width: 100%; padding: 12px; margin: 8px 0 15px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 14px;}
+        button { background-color: #1a73e8; color: white; border: none; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        button:hover { background-color: #1557b0; }
+        .btn-withdraw { background-color: #ff9800; color: #fff; width: auto; padding: 10px 20px; }
+        .btn-withdraw:hover { background-color: #e68a00; }
+
+        /* Dashboard Styles */
+        .header-panel { display: flex; justify-content: space-between; align-items: center; background: #1a73e8; color: white; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; }
+        .header-panel h2 { color: white; margin: 0; }
+        .saldo-box { font-size: 24px; font-weight: bold; }
+        
+        .withdraw-section { background: #fff3e0; padding: 15px; border-radius: 8px; border: 1px solid #ffe0b2; margin-bottom: 20px; display: flex; gap: 10px; align-items: center;}
+        
+        /* Rules Styles */
+        .rules-box { background: #e8f0fe; border-left: 5px solid #1a73e8; padding: 15px; border-radius: 4px; margin-bottom: 20px; font-size: 14px; line-height: 1.6; }
+        .rules-box ul { margin: 5px 0 0 0; padding-left: 20px; }
+        
+        /* Log Styles */
+        .log-terminal { background: #1e1e1e; color: #4af626; font-family: monospace; padding: 15px; height: 180px; overflow-y: auto; border-radius: 6px; border: 2px solid #333; }
+        .log-error { color: #ff4c4c; }
+    </style>
+</head>
+<body>
+
+    <!-- HALAMAN LOGIN -->
+    <div class="container" id="login-section">
+        <center><h2>Login / Register Panel</h2></center>
+        <p style="text-align:center; color:#666;">Silakan masukkan username untuk masuk atau mendaftar otomatis.</p>
+        <input type="text" id="username" placeholder="Masukkan Username Anda">
+        <input type="password" id="password" placeholder="Masukkan Password">
+        <button onclick="prosesLogin()">Masuk ke Dashboard</button>
+    </div>
+
+    <!-- HALAMAN DASHBOARD -->
+    <div class="container hidden" id="dashboard-section">
+        
+        <div class="header-panel">
+            <h2 id="welcome-msg">Halo, User!</h2>
+            <div class="saldo-box">Saldo: Rp <span id="display-saldo">0</span></div>
+        </div>
+
+        <div class="withdraw-section">
+            <strong>Penarikan:</strong>
+            <select id="wd-metode" style="width: 150px; margin: 0;">
+                <option value="DANA">DANA</option>
+                <option value="OVO">OVO</option>
+                <option value="GOPAY">GoPay</option>
+            </select>
+            <input type="number" id="wd-nomor" placeholder="Nomor E-Wallet" style="width: 250px; margin: 0;">
+            <button class="btn-withdraw" onclick="tarikSaldo()">Tarik Sekarang</button>
+        </div>
+
+        <div class="rules-box">
+            <h3>📋 DESKRIPSI & PERATURAN SETORAN</h3>
+            <p><strong>Harga Akun:</strong> FRESH = <b>Rp 4.000</b> | CAPTCHA = <b>Rp 2.000</b></p>
+            <div style="display: flex; gap: 20px;">
+                <div style="flex: 1;">
+                    <strong>RULES FRESH:</strong>
+                    <ul>
+                        <li>WAJIB FRESH TANPA CAPTCHA</li>
+                        <li>NAMA GMAIL BEBAS</li>
+                        <li>Password Wajib: <b>SGSG1122</b></li>
+                    </ul>
+                </div>
+                <div style="flex: 1;">
+                    <strong>RULES CAPTCHA:</strong>
+                    <ul>
+                        <li>TIDAK VERIFIKASI TAB ATAU BAN</li>
+                        <li>STATUS LIVE & NAMA GMAIL BEBAS</li>
+                        <li>PW BEBAS (SGSG1122 hanya berlaku di fresh, jika di captcha juga tidak masalah)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <h3>📝 Setor Akun Gmail</h3>
+        <label><b>Kategori Akun:</b></label>
+        <select id="kategori-akun">
+            <option value="FRESH">FRESH - Rp 4.000 / Akun</option>
+            <option value="CAPTCHA">CAPTCHA - Rp 2.000 / Akun</option>
+        </select>
+
+        <label><b>Masukkan Data (Format: email@gmail.com|password)</b> - <i>Bisa masukkan banyak baris sekaligus</i></label>
+        <textarea id="data-input" rows="6" placeholder="contoh1@gmail.com|SGSG1122&#10;contoh2@gmail.com|SGSG1122"></textarea>
+        <button onclick="prosesSetor()">Kirim & Cek Validasi</button>
+
+        <h3>⚙️ Log Sistem & Pengecekan Duplikat</h3>
+        <div class="log-terminal" id="log-output">
+            [Sistem] Menunggu data disetor...<br>
+        </div>
+    </div>
+
+    <!-- LOGIKA JAVASCRIPT -->
+    <script>
+        // Simulasi Database Sederhana di Browser
+        let saldoUser = 0;
+        let databaseEmail = ["test@gmail.com", "admin@gmail.com"]; // Simulasi email yang sudah pernah disetor (Memicu auto-ketolak)
+
+        function prosesLogin() {
+            let user = document.getElementById('username').value;
+            if (user.length < 3) {
+                alert("Username minimal 3 karakter!");
+                return;
+            }
+            // Pindah halaman ke dashboard
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('dashboard-section').classList.remove('hidden');
+            document.getElementById('welcome-msg').innerText = "Halo, " + user + "!";
+        }
+
+        function prosesSetor() {
+            let kategori = document.getElementById('kategori-akun').value;
+            let dataMentah = document.getElementById('data-input').value;
+            let harga = (kategori === 'FRESH') ? 4000 : 2000;
+            let barisData = dataMentah.split('\n');
+            let jumlahSukses = 0;
+
+            if (dataMentah.trim() === "") return alert("Data masih kosong!");
+
+            tulisLog("[Sistem] Memulai pengecekan " + barisData.length + " baris data tipe " + kategori + "...", false);
+
+            barisData.forEach(baris => {
+                let text = baris.trim();
+                if (text === "") return;
+
+                let pecah = text.split('|');
+                let email = pecah[0];
+                let password = pecah[1] || "";
+
+                // 1. FITUR AUTO KETOLAK JIKA DUPLIKAT
+                if (databaseEmail.includes(email)) {
+                    tulisLog("❌ KETOLAK (DUPLIKAT): Email " + email + " sudah pernah disetorkan sebelumnya!", true);
+                    return; // Lewati email ini, lanjut ke bawahnya
+                }
+
+                // 2. CEK RULES PASSWORD FRESH (Wajib SGSG1122)
+                if (kategori === 'FRESH' && password !== 'SGSG1122') {
+                    tulisLog("❌ KETOLAK (RULES): " + email + " -> Password FRESH wajib SGSG1122!", true);
+                    return; 
+                }
+
+                // JIKA LOLOS SEMUA RULES
+                databaseEmail.push(email); // Simpan ke database agar tidak bisa diulang
+                saldoUser += harga;        // Tambah Saldo
+                jumlahSukses++;
+                tulisLog("✅ DITERIMA: " + email + " -> Saldo bertambah Rp " + harga.toLocaleString('id-ID'), false);
+            });
+
+            // Update Tampilan Saldo & Kosongkan Form
+            document.getElementById('display-saldo').innerText = saldoUser.toLocaleString('id-ID');
+            document.getElementById('data-input').value = "";
+            alert(jumlahSukses + " akun berhasil disetor dan lolos verifikasi!");
+        }
+
+        function tarikSaldo() {
+            let metode = document.getElementById('wd-metode').value;
+            let nomor = document.getElementById('wd-nomor').value;
+
+            if (saldoUser < 10000) {
+                alert("Minimal penarikan adalah Rp 10.000");
+                return;
+            }
+            if (nomor.trim() === "") {
+                alert("Silakan masukkan nomor tujuan DANA/OVO/GoPay!");
+                return;
+            }
+
+            // Simulasi Penarikan Berhasil
+            tulisLog("💸 PENARIKAN DIPROSES: Rp " + saldoUser.toLocaleString('id-ID') + " ditransfer ke " + metode + " (" + nomor + ")", false);
+            saldoUser = 0; // Reset Saldo
+            document.getElementById('display-saldo').innerText = "0";
+            alert("Permintaan penarikan berhasil dibuat. Sedang diproses ke " + metode);
+        }
+
+        function tulisLog(pesan, isError) {
+            let logDiv = document.getElementById('log-output');
+            let span = document.createElement('span');
+            span.innerHTML = pesan + "<br>";
+            if (isError) span.className = "log-error";
+            logDiv.appendChild(span);
+            logDiv.scrollTop = logDiv.scrollHeight; // Auto scroll ke bawah
+        }
+    </script>
+</body>
+  </html>
+  
